@@ -30,6 +30,27 @@ interface IPTVActions {
 
 interface IPTVStore extends IPTVState, IPTVActions {}
 
+const MAX_CONCURRENT = 3;
+
+async function fetchWithConcurrencyLimit<T>(
+  tasks: (() => Promise<T>)[],
+  limit: number
+): Promise<T[]> {
+  const results: T[] = [];
+  let index = 0;
+
+  async function runNext(): Promise<void> {
+    while (index < tasks.length) {
+      const currentIndex = index++;
+      results[currentIndex] = await tasks[currentIndex]();
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(limit, tasks.length) }, () => runNext());
+  await Promise.all(workers);
+  return results;
+}
+
 export const useIPTVStore = create<IPTVStore>()(
   persist(
     (set, get) => ({
@@ -65,20 +86,20 @@ export const useIPTVStore = create<IPTVStore>()(
           const allChannels: M3UChannel[] = [];
           const allGroups = new Set<string>();
 
-          await Promise.all(
-            sources.map(async (source) => {
-              try {
-                const res = await fetch('/api/iptv?' + new URLSearchParams({ url: source.url }));
-                if (!res.ok) return;
-                const text = await res.text();
-                const playlist = parseM3U(text);
-                allChannels.push(...playlist.channels);
-                playlist.groups.forEach((g) => allGroups.add(g));
-              } catch (e) {
-                console.error(`Failed to fetch IPTV source: ${source.name}`, e);
-              }
-            })
-          );
+          const tasks = sources.map((source) => async () => {
+            try {
+              const res = await fetch('/api/iptv?' + new URLSearchParams({ url: source.url }));
+              if (!res.ok) return;
+              const text = await res.text();
+              const playlist = parseM3U(text);
+              allChannels.push(...playlist.channels);
+              playlist.groups.forEach((g) => allGroups.add(g));
+            } catch (e) {
+              console.error(`Failed to fetch IPTV source: ${source.name}`, e);
+            }
+          });
+
+          await fetchWithConcurrencyLimit(tasks, MAX_CONCURRENT);
 
           set({
             cachedChannels: allChannels,

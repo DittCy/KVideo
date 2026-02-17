@@ -20,8 +20,10 @@ export function IPTVSourceManager() {
     setName('');
     setUrl('');
     setShowAdd(false);
-    // Auto-refresh after adding
-    setTimeout(() => refreshSources(), 100);
+    // Auto-refresh after adding (only if not already loading)
+    if (!isLoading) {
+      setTimeout(() => refreshSources(), 100);
+    }
   };
 
   return (
@@ -57,13 +59,19 @@ export function IPTVSourceManager() {
             placeholder="源名称（如：我的IPTV）"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            spellCheck={false}
+            autoCorrect="off"
+            autoCapitalize="off"
             className="w-full px-3 py-2 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-[var(--radius-2xl)] text-sm text-[var(--text-color)] placeholder:text-[var(--text-color-secondary)]/50 focus:outline-none focus:border-[var(--accent-color)]"
           />
           <input
-            type="text"
+            type="url"
             placeholder="M3U 链接地址"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
+            spellCheck={false}
+            autoCorrect="off"
+            autoCapitalize="off"
             className="w-full px-3 py-2 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-[var(--radius-2xl)] text-sm text-[var(--text-color)] placeholder:text-[var(--text-color-secondary)]/50 focus:outline-none focus:border-[var(--accent-color)]"
           />
           <div className="flex justify-end gap-2">
